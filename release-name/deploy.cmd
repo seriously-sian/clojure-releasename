@@ -48,17 +48,43 @@ IF NOT DEFINED KUDU_SYNC_CMD (
   SET KUDU_SYNC_CMD=%appdata%\npm\kuduSync.cmd
 )
 
+:: Include JRE binaries in PATH -- used by lein self-install later
+export PATH=$PATH:$JAVA_HOME/bin
+ 
+:: Fetch and install lein script
+LEIN_DIR=${HOME}/bin
+IF [ ! -d "$LEIN_DIR" ];
+  mkdir $LEIN_DIR
+fi
+ 
+LEIN_BIN=${LEIN_DIR}/lein
+IF [ ! -f "$LEIN_BIN" ];
+  curl -sSL https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein -o $LEIN_BIN
+fi
+
+:: Build uberwar
+WAR_NAME="ROOT.war"
+_JAVA_OPTIONS='-Djava.net.preferIPv4Stack=true' sh $LEIN_BIN ring uberwar $WAR_NAME
+
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 :: Deployment
 :: ----------
 
 echo Handling Basic Web Site deployment.
 
-:: 1. KuduSync
-IF /I "%IN_PLACE_DEPLOYMENT%" NEQ "1" (
-  call :ExecuteCmd "%KUDU_SYNC_CMD%" -v 50 -f "%DEPLOYMENT_SOURCE%" -t "%DEPLOYMENT_TARGET%" -n "%NEXT_MANIFEST_PATH%" -p "%PREVIOUS_MANIFEST_PATH%" -i ".git;.hg;.deployment;deploy.cmd"
-  IF !ERRORLEVEL! NEQ 0 goto error
-)
+REM :: 1. KuduSync
+REM IF /I "%IN_PLACE_DEPLOYMENT%" NEQ "1" (
+REM   call :ExecuteCmd "%KUDU_SYNC_CMD%" -v 50 -f "%DEPLOYMENT_SOURCE%" -t "%DEPLOYMENT_TARGET%" -n "%NEXT_MANIFEST_PATH%" -p "%PREVIOUS_MANIFEST_PATH%" -i ".git;.hg;.deployment;deploy.cmd"
+REM   IF !ERRORLEVEL! NEQ 0 goto error
+REM )
+
+WAR_SRC=${DEPLOYMENT_SOURCE}/target/${WAR_NAME}
+WAR_DST=${DEPLOYMENT_TARGET}/webapps/${WAR_NAME}
+IF [[ "$IN_PLACE_DEPLOYMENT" -ne "1" ]];
+  rm -rfv $WAR_DST ${WAR_DST%.*}
+  cp -fv $WAR_SRC $WAR_DST
+  exitWithMessageOnError "Could not deploy ROOT.war"
+fi
 
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 goto end
