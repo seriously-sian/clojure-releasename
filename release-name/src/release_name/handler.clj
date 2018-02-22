@@ -3,7 +3,8 @@
     [compojure.route :as route]
     [ring.middleware.defaults :refer [wrap-defaults site-defaults]]
     [clj-http.client :as client]
-    [cheshire.core :refer :all]))
+    [cheshire.core :refer :all])
+  )
 
 (defn getDomain
   [domains]
